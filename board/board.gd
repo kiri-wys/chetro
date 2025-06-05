@@ -27,7 +27,7 @@ func _ready() -> void:
 				var moves = cursor.piece_under.info._valid_moves(cursor.piece_under, self)
 				for mov in moves:
 					var gizmo: Placeable = INDIC_SCENE.instantiate()
-					gizmo.info = MoveGizmo.new()
+					gizmo.info = PieceInfo.load_or_fallback("move_gizmo")
 					gizmo.grid_position = mov
 					gizmo.board_size = sprite_size
 					add_child(gizmo)
@@ -40,7 +40,7 @@ func _ready() -> void:
 				var moves = cursor.piece_under.info._valid_moves(cursor.piece_under, self)
 				for mov in moves:
 					var gizmo: Placeable = INDIC_SCENE.instantiate()
-					gizmo.info = MoveGizmo.new()
+					gizmo.info = PieceInfo.load_or_fallback("move_gizmo")
 					gizmo.grid_position = mov
 					gizmo.board_size = sprite_size
 					add_child(gizmo)
