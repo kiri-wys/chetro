@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://dg2rxro64qgec"]
+
+[ext_resource type="Script" uid="uid://c5iscwmg8o76n" path="res://board/pieces/Placeable.gd" id="1_16qfn"]
+[ext_resource type="Texture2D" uid="uid://bxawn2g30y5ml" path="res://assets/pieces.png" id="2_shpun"]
+
+[node name="Placeable" type="Node2D"]
+script = ExtResource("1_16qfn")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_shpun")
+region_enabled = true

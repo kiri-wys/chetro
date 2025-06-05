@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3 uid="uid://j02k3o3avyq1"]
+
+[ext_resource type="Texture2D" uid="uid://c88bjwxfin7xu" path="res://assets/board.png" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://bfrrcgmqo4lq" path="res://board/board.gd" id="2_0xm2m"]
+[ext_resource type="Script" uid="uid://csy1y1d7nfyup" path="res://board/cursor.gd" id="3_h2yge"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0xm2m"]
+size = Vector2(128, 128)
+
+[node name="Main" type="Node2D"]
+
+[node name="Board" type="Sprite2D" parent="."]
+position = Vector2(858, 541)
+texture = ExtResource("1_0xm2m")
+script = ExtResource("2_0xm2m")
+
+[node name="Cursor" type="Area2D" parent="Board"]
+collision_layer = 0
+script = ExtResource("3_h2yge")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Board/Cursor"]
+shape = SubResource("RectangleShape2D_0xm2m")
