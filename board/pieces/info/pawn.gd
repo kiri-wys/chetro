@@ -1,6 +1,6 @@
 class_name Pawn extends PieceInfo
 
-func _valid_moves(piece: Piece, board: Board) -> Array[Vector2i]:
+func _pseudo_valid_moves(piece: Piece, board: Board) -> Array[Vector2i]:
 	var res: Array[Vector2i] = []
 	var f = piece.grid_position + piece.front
 	if board.squares_state.get(f, Board.SquareState.FREE) == Board.SquareState.FREE:

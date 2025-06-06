@@ -8,13 +8,13 @@ var rows: int
 var columns: int
 @onready var cursor: Cursor = $Cursor
 
-enum SquareState {
-	FREE,
-	BLACK,
-	WHITE,
-	}
+class Square:
+	var piece: Piece
+	var num_black_attacks: int
+	var num_white_attacks: int
+
 var selected_piece: Piece
-var squares_state: Dictionary[Vector2i, SquareState]
+var squares_state: Dictionary[Vector2i, Square]
 
 signal gizmo_deletion
 
@@ -24,7 +24,7 @@ func in_bounds(grid_position: Vector2i) -> bool:
 
 func show_move_gizmos(piece: Piece):
 	piece.toggle_select()
-	var moves = piece.info._valid_moves(piece, self)
+	var moves = piece.info._pseudo_valid_moves(piece, self)
 	for mov in moves:
 		var gizmo: Placeable = INDIC_SCENE.instantiate()
 		gizmo.info = PieceInfo.load_or_fallback("move_gizmo")
@@ -57,11 +57,17 @@ func _ready() -> void:
 
 				selected_piece.toggle_select()
 				if cursor.piece_under.color != Piece.PieceColor.WHITE: 
-					var moves = selected_piece.info._valid_moves(selected_piece, self)
+					var moves = selected_piece.info._pseudo_valid_moves(selected_piece, self)
 					if cursor.piece_under.grid_position in moves:
-						squares_state[selected_piece.grid_position] = SquareState.FREE
+						var sq = squares_state.get(selected_piece.grid_position, Square.new())
+						sq.piece = null
+						squares_state[selected_piece.grid_position] = sq
+						
 						selected_piece.grid_position = cursor.piece_under.grid_position
-						squares_state[selected_piece.grid_position] = 1 + selected_piece.color as SquareState
+						sq = squares_state.get(selected_piece.grid_position, Square.new())
+						sq.piece = selected_piece
+						squares_state[selected_piece.grid_position] = sq
+
 						selected_piece.move_to_grid()
 						cursor.piece_under.capture()
 					else:
@@ -78,12 +84,18 @@ func _ready() -> void:
 			Cursor.SelectionState.MOVE_PIECE: 
 				gizmo_deletion.emit()
 
-				var moves = selected_piece.info._valid_moves(selected_piece, self)
+				var moves = selected_piece.info._pseudo_valid_moves(selected_piece, self)
 				selected_piece.toggle_select()
 				if cursor.grid_position in moves:
-					squares_state[selected_piece.grid_position] = SquareState.FREE
+					var sq = squares_state.get(selected_piece.grid_position, Square.new())
+					sq.piece = null
+					squares_state[selected_piece.grid_position] = sq
+					
 					selected_piece.grid_position = cursor.grid_position
-					squares_state[selected_piece.grid_position] = 1 + selected_piece.color as SquareState
+					sq = squares_state.get(selected_piece.grid_position, Square.new())
+					sq.piece = selected_piece
+					squares_state[selected_piece.grid_position] = sq
+					
 					selected_piece.move_to_grid()
 			Cursor.SelectionState.NOTHING: 
 				gizmo_deletion.emit()
@@ -92,11 +104,12 @@ func _ready() -> void:
 	)
 
 func instantiate_piece(piece_info: PieceInfo, grid_position: Vector2i, color: Piece.PieceColor) -> void:
-	squares_state[grid_position] = 1 + color as SquareState
+	squares_state[grid_position] = Square.new()
 	var piece: Piece = PIECE_SCENE.instantiate()
 	piece.front = Vector2(0, -1) if color == Piece.PieceColor.BLACK else Vector2(0, 1)
 	piece.color = color
 	piece.info = piece_info
 	piece.grid_position = grid_position 
 	piece.board_size = sprite_size
+	squares_state[grid_position].piece = piece
 	self.add_child(piece)
