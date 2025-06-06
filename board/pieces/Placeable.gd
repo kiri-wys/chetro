@@ -2,7 +2,7 @@ class_name Placeable extends Node2D
 
 @export var info: PieceInfo
 
-var grid_position: Vector2
+var grid_position: Vector2i
 var board_size: Vector2
 
 func _ready() -> void:

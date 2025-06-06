@@ -20,7 +20,7 @@ func get_state(selected_piece) -> SelectionState:
 		else: return SelectionState.NOTHING
 
 var board: Board 
-var grid_position: Vector2
+var grid_position: Vector2i
 
 var piece_under: Piece 
 
@@ -44,8 +44,8 @@ func _physics_process(_delta: float) -> void:
 	# board_size / size_cell = number of cells
 	# num_cells / 2.0 = half the number of cells, offset so 0,0 is at bottom left
 	# x / a / b = (x/a) * 1/b = x/(a*b)
-	grid_position.x = ceilf(m.x / Globals.square_size) + (board.sprite_size.x / Globals.double_square_size)
-	grid_position.y = absf(ceilf(m.y / Globals.square_size) - (board.sprite_size.y / Globals.double_square_size) - 1.0)
+	grid_position.x = ceilf(m.x / Globals.square_size) + (board.sprite_size.x / Globals.double_square_size) as int
+	grid_position.y = absf(ceilf(m.y / Globals.square_size) - (board.sprite_size.y / Globals.double_square_size) - 1.0) as int
 
 	if Input.is_action_just_pressed("square_click"):
 		square_clicked.emit()

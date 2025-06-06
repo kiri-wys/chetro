@@ -1,11 +1,10 @@
 class_name PieceInfo extends Resource
 
-@export var sprite: Texture2D
 var region_offset: Vector2i = Vector2i(0, 0)
 
 func region() -> Rect2:
 	var coords = region_offset
-	return Rect2(128.0 * coords.x, 128.0 * coords.y, 128.0, 128.0)
+	return Rect2(Globals.square_size * coords.x, Globals.square_size * coords.y, Globals.square_size, Globals.square_size)
 
 static func load_or_fallback(name: String) -> PieceInfo:
 	var path = "res://board/pieces/info/%s.gd" % name
@@ -35,5 +34,78 @@ static func load_or_fallback(name: String) -> PieceInfo:
 		print("WARNING: %s requested but known mapping not found, using fallback" % name)
 		return PieceInfo.new()
 
-func _valid_moves(_piece: Piece, _board: Board) -> PackedVector2Array:
-	return PackedVector2Array([])
+func _valid_moves(_piece: Piece, _board: Board) -> Array[Vector2i]:
+	return []
+
+
+# Builds a line in the direction of the vector away from the piece
+# until it hits a square that is not free, if it hits a piece 
+# not of the same color, it is added to the result
+func build_line(piece: Piece, board: Board, direction: Vector2i, res: Array[Vector2i]):
+	var i = 1
+	while board.in_bounds(piece.grid_position + direction * i):
+		var square = piece.grid_position + direction * i
+		var state = board.squares_state.get(square, Board.SquareState.FREE)
+		var is_free = state == Board.SquareState.FREE
+		var is_same_color = state == 1 + piece.color as Board.SquareState
+		
+		if is_free:
+			res.append(square)
+		else:
+			if !is_same_color:
+				res.append(square)
+			break
+		
+		i += 1
+# Builds all lines away from the piece
+# effectively making a rook's move
+func build_line_cross(piece: Piece, board: Board, res: Array[Vector2i]):
+	build_line(piece, board, Vector2i(1, 0), res)
+	build_line(piece, board, Vector2i(-1, 0), res)
+	build_line(piece, board, Vector2i(0, 1), res)
+	build_line(piece, board, Vector2i(0, -1), res)
+
+
+# Builds a diagonal in the direction of the vector away from the piece
+# until it hits a square that is not free, if it hits a piece 
+# not of the same color, it is added to the result
+func build_diagonal(piece: Piece, board: Board, direction: Vector2i, res: Array[Vector2i]):
+	var i = 1
+	while board.in_bounds(piece.grid_position + direction * i):
+		var square = piece.grid_position + direction * i
+		var state = board.squares_state.get(square, Board.SquareState.FREE)
+		var is_free = state == Board.SquareState.FREE
+		var is_same_color = state == 1 + piece.color as Board.SquareState
+		
+		if is_free:
+			res.append(square)
+		else:
+			if !is_same_color:
+				res.append(square)
+			break
+		
+		i += 1
+# Builds all diagonals away from the piece
+# effectively making a bishop's move
+func build_diagonal_cross(piece: Piece, board: Board, res: Array[Vector2i]):
+	build_diagonal(piece, board, Vector2i(1, 1), res)
+	build_diagonal(piece, board, Vector2i(1, -1), res)
+	build_diagonal(piece, board, Vector2i(-1, 1), res)
+	build_diagonal(piece, board, Vector2i(-1, -1), res)
+
+# Builds squares that are d1 and d2 away from the piece in all directions
+# Effectively building a square of size 2*d1+1 x 2*d2+1
+# when this function is called two times
+# once with d1 = 1, d2 = 2
+# once with d1 = 2, d2 = 1
+# it builds a knight's move
+func build_square(piece: Piece, board: Board, d1: int, d2: int, res: Array[Vector2i]):
+	for m1 in [1, -1]:
+		for m2 in [1, -1]:
+			var square = piece.grid_position + Vector2i(d1 * m1, d2 * m2)
+			var state = board.squares_state.get(square, Board.SquareState.FREE)
+			var is_same_color = state == 1 + piece.color as Board.SquareState
+			if not is_same_color and board.in_bounds(square):
+				res.append(square)
+			else:
+				continue	
