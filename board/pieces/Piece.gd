@@ -26,4 +26,5 @@ func toggle_select():
 		modulate = Color.WHITE
 
 func capture() -> void:
+	disconect_piece.emit()
 	queue_free()

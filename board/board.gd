@@ -80,14 +80,14 @@ func _after_ready() -> void:
 		if piece != null:
 			piece.info._pseudo_valid_moves(piece, self)
 func _ready() -> void:
-	#instantiate_piece(PieceInfo.load_or_fallback("pawn"), Vector2i(1,2), Piece.PieceColor.WHITE)
+	instantiate_piece(PieceInfo.load_or_fallback("pawn"), Vector2i(1,2), Piece.PieceColor.WHITE)
 	instantiate_piece(PieceInfo.load_or_fallback("rook"), Vector2i(1,1), Piece.PieceColor.WHITE)
 	instantiate_piece(PieceInfo.load_or_fallback("bishop"), Vector2i(2,1), Piece.PieceColor.WHITE)
-	#instantiate_piece(PieceInfo.load_or_fallback("knight"), Vector2i(3,1), Piece.PieceColor.WHITE)
-	#instantiate_piece(PieceInfo.load_or_fallback("queen"), Vector2i(4,1), Piece.PieceColor.WHITE)
+	instantiate_piece(PieceInfo.load_or_fallback("knight"), Vector2i(3,1), Piece.PieceColor.WHITE)
+	instantiate_piece(PieceInfo.load_or_fallback("queen"), Vector2i(4,1), Piece.PieceColor.WHITE)
 
-	#instantiate_piece(PieceInfo.load_or_fallback("pawn"), Vector2i(1,7), Piece.PieceColor.BLACK)
-	#instantiate_piece(PieceInfo.load_or_fallback("rook"), Vector2i(4,3), Piece.PieceColor.BLACK)
+	instantiate_piece(PieceInfo.load_or_fallback("pawn"), Vector2i(1,7), Piece.PieceColor.BLACK)
+	instantiate_piece(PieceInfo.load_or_fallback("rook"), Vector2i(4,3), Piece.PieceColor.BLACK)
 	
 	rows = (sprite_size.y / Globals.square_size) as int
 	columns = (sprite_size.x / Globals.square_size) as int
