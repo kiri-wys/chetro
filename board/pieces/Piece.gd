@@ -1,5 +1,7 @@
 class_name Piece extends Placeable
 
+signal disconect_piece()
+
 enum PieceColor {
 	BLACK,
 	WHITE,

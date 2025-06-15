@@ -45,14 +45,17 @@ func build_line(piece: Piece, board: Board, direction: Vector2i, res: Array[Vect
 	var i = 1
 	while board.in_bounds(piece.grid_position + direction * i):
 		var square = piece.grid_position + direction * i
-		var state = board.squares_state.get(square, Board.Square.new())
+		var state = board.squares_state.get(square, Board.Square.new(board))
 		var is_free = state.piece == null
-		
+
 		if is_free:
 			res.append(square)
+			state.register_attack(piece)
+			board.squares_state[square] = state
 		else:
 			var is_same_color = state.piece.color == piece.color
-			print(state.piece.color, piece.color)
+			state.register_attack(piece)
+			board.squares_state[square] = state
 			if !is_same_color:
 				res.append(square)
 			break
@@ -74,13 +77,17 @@ func build_diagonal(piece: Piece, board: Board, direction: Vector2i, res: Array[
 	var i = 1
 	while board.in_bounds(piece.grid_position + direction * i):
 		var square = piece.grid_position + direction * i
-		var state = board.squares_state.get(square, Board.Square.new())
+		var state = board.squares_state.get(square, Board.Square.new(board))
 		var is_free = state.piece == null
 		var is_same_color = !is_free and state.piece.color == piece.color
 		
 		if is_free:
 			res.append(square)
+			state.register_attack(piece)
+			board.squares_state[square] = state
 		else:
+			state.register_attack(piece)
+			board.squares_state[square] = state
 			if !is_same_color:
 				res.append(square)
 			break
@@ -104,7 +111,7 @@ func build_square(piece: Piece, board: Board, d1: int, d2: int, res: Array[Vecto
 	for m1 in [1, -1]:
 		for m2 in [1, -1]:
 			var square = piece.grid_position + Vector2i(d1 * m1, d2 * m2)
-			var state = board.squares_state.get(square, Board.Square.new())
+			var state = board.squares_state.get(square, Board.Square.new(board))
 			var is_same_color = state.piece != null and state.piece.color == piece.color
 			if not is_same_color and board.in_bounds(square):
 				res.append(square)
