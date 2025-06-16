@@ -163,9 +163,27 @@ impl Board {
         self.draw_pieces();
         self.draw_gizmos();
     }
-    fn is_valid(&self, pos: GridPosition) -> bool {
+    fn query_square(&self, pos: GridPosition, flags: SquareQueryFlags) -> bool {
         let GridPosition { x, y } = pos;
-        (0..self.num_cells.x).contains(&x) && (0..self.num_cells.y).contains(&y)
+        let mut res = !flags.is_empty();
+        if flags.contains(SquareQueryFlags::IN_BOUNDS) {
+            res &= (0..self.num_cells.x).contains(&x) && (0..self.num_cells.y).contains(&y);
+        }
+        if flags.contains(SquareQueryFlags::NO_BLACK_ATTACK) {
+            res &= !self
+                .black_pieces
+                .iter()
+                .flat_map(|p| p.moveset(self, (0, -1)))
+                .any(|p| p == pos);
+        }
+        if flags.contains(SquareQueryFlags::NO_WHITE_ATTACK) {
+            res |= !self
+                .white_pieces
+                .iter()
+                .flat_map(|p| p.moveset(self, (0, -1)))
+                .any(|p| p == pos);
+        }
+        res
     }
     pub fn grid_from_world(&self, pos: Vec2) -> Option<GridPosition> {
         let height = self.cell_size.y * self.num_cells.y as f32;
@@ -320,5 +338,14 @@ impl Display for GridPosition {
         }
         s = s.chars().rev().collect();
         write!(f, "{}{}", s, self.y + 1)
+    }
+}
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy)]
+    pub struct SquareQueryFlags: u8 {
+        const IN_BOUNDS         = 1 << 0;
+        const NO_BLACK_ATTACK   = 1 << 1;
+        const NO_WHITE_ATTACK   = 1 << 2;
     }
 }

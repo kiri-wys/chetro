@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{Board, GridPosition, sprites::PieceMappings};
+use super::{Board, GridPosition, SquareQueryFlags, sprites::PieceMappings};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PieceColor {
@@ -35,6 +35,7 @@ impl Piece {
             start: self.position,
             piece_color: self.color,
             front,
+            square_flags: SquareQueryFlags::IN_BOUNDS,
             occupied_squares: &occupied_squares,
             board,
             result: &mut res,
@@ -62,6 +63,7 @@ impl Piece {
                 helper.build_diag_cross(None, InclusionPolicy::EMPTY | InclusionPolicy::DIFFERENT);
             }
             PieceKind::King => {
+                helper.square_flags |= SquareQueryFlags::NO_BLACK_ATTACK;
                 helper.build_cross(Some(1), InclusionPolicy::EMPTY | InclusionPolicy::DIFFERENT);
                 helper
                     .build_diag_cross(Some(1), InclusionPolicy::EMPTY | InclusionPolicy::DIFFERENT);
@@ -75,12 +77,14 @@ struct MoveConstructor<'a> {
     start: GridPosition,
     piece_color: PieceColor,
     front: (i8, i8),
+    square_flags: SquareQueryFlags,
     occupied_squares: &'a HashMap<GridPosition, PieceColor>,
     board: &'a Board,
     result: &'a mut Vec<GridPosition>,
 }
 impl MoveConstructor<'_> {
     fn build_cross(&mut self, max: Option<u16>, include: InclusionPolicy) {
+        let old = self.front;
         self.front = (1, 0);
         self.build_straight_line(max, include);
         self.front = (0, 1);
@@ -89,14 +93,17 @@ impl MoveConstructor<'_> {
         self.build_straight_line(max, include);
         self.front = (-1, 0);
         self.build_straight_line(max, include);
+        self.front = old;
     }
     fn build_diag_cross(&mut self, max: Option<u16>, include: InclusionPolicy) {
+        let old = self.front;
         for dy in [-1, 1] {
             for dx in [-1, 1] {
                 self.front = (dx, dy);
                 self.build_straight_line(max, include);
             }
         }
+        self.front = old;
     }
     fn build_straight_line(&mut self, max: Option<u16>, include: InclusionPolicy) {
         let max = max.unwrap_or(512);
@@ -108,7 +115,7 @@ impl MoveConstructor<'_> {
         });
 
         for candidate in squares {
-            if self.board.is_valid(candidate) {
+            if self.board.query_square(candidate, self.square_flags) {
                 match self.occupied_squares.get(&candidate) {
                     Some(col) => {
                         let same = *col == self.piece_color;
@@ -135,7 +142,7 @@ impl MoveConstructor<'_> {
             for m2 in [-1, 1] {
                 let delta = (delta.0 * m1, delta.1 * m2);
                 if let Some(candidate) = self.start.try_add(delta) {
-                    if self.board.is_valid(candidate)
+                    if self.board.query_square(candidate, self.square_flags)
                         && self
                             .occupied_squares
                             .get(&candidate)
