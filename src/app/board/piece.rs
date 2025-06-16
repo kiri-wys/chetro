@@ -41,10 +41,11 @@ impl Piece {
         };
         match self.kind {
             PieceKind::Pawn => {
-                let new = self.position.try_add(front).unwrap();
-                if board.is_valid(new) {
-                    res.push(new);
-                };
+                helper.build_straight_line(Some(1), InclusionPolicy::EMPTY);
+                helper.front.0 = 1;
+                helper.build_straight_line(Some(1), InclusionPolicy::DIFFERENT);
+                helper.front.0 = -1;
+                helper.build_straight_line(Some(1), InclusionPolicy::DIFFERENT);
             }
             PieceKind::Rook => {
                 helper.build_cross(None, InclusionPolicy::EMPTY | InclusionPolicy::DIFFERENT);
