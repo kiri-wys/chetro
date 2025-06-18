@@ -9,6 +9,7 @@ use macroquad::{
     math::Vec2,
     shapes::draw_circle,
 };
+use tracing::info;
 
 pub struct Game {
     board: Board,
@@ -73,7 +74,7 @@ impl Game {
                         }
                     }
                 };
-                println!("{}", action);
+                info!("{}", action);
 
                 // TODO: Would it be worth it to have Rc<RefCell> instead of loose references?
                 // Consider that the runtime costs of handling the references could be close

@@ -2,6 +2,7 @@ mod app;
 
 use app::board::sprites::{PieceMappings, SpritesMap};
 use macroquad::prelude::*;
+use tracing_subscriber::FmtSubscriber;
 
 const TARGET_RESOLUTION: Vec2 = Vec2 {
     x: 1920.0,
@@ -10,6 +11,9 @@ const TARGET_RESOLUTION: Vec2 = Vec2 {
 
 #[macroquad::main("Chetro")]
 async fn main() {
+    let subscriber = FmtSubscriber::new();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     let s = std::fs::read_to_string("assets/pieces.json").unwrap();
     let mappings: PieceMappings = serde_json::from_str(&s).unwrap();
     let white_sprites = SpritesMap {
@@ -63,6 +67,7 @@ async fn main() {
                 ..Default::default()
             },
         );
+        draw_text(&get_fps().to_string(), 0.0, 16.0, 32.0, GREEN);
 
         next_frame().await
     }

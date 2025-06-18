@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-
-use super::{Board, GridPosition, SquareQueryFlags, sprites::PieceMappings};
+use super::{BoardState, GridPosition, SquareQueryFlags, sprites::PieceMappings};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PieceColor {
     Black,
     White,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PieceKind {
     Pawn,
     Rook,
@@ -23,20 +21,21 @@ pub struct Piece {
     pub position: GridPosition,
 }
 impl Piece {
-    pub fn moveset(&self, board: &Board, front: (i8, i8)) -> Vec<GridPosition> {
-        let occupied_squares: HashMap<GridPosition, PieceColor> = board
-            .black_pieces
-            .iter()
-            .chain(board.white_pieces.iter())
-            .map(|p| (p.position, p.color))
-            .collect();
+    /// Generates pseduolegal moves.
+    /// A pseudolegal move is defined as a reachable possible move the piece can take.
+    /// The difference with legal moves is that pseudolegal moves dont take into account
+    /// some of the game's state and rules such as if the move would lead to a check(mate).
+    pub fn pseudo_moveset(&self, board: &BoardState) -> Vec<GridPosition> {
+        let front = match self.color {
+            PieceColor::Black => (0, -1),
+            PieceColor::White => (0, 1),
+        };
         let mut res = vec![];
         let mut helper = MoveConstructor {
             start: self.position,
             piece_color: self.color,
             front,
             square_flags: SquareQueryFlags::IN_BOUNDS,
-            occupied_squares: &occupied_squares,
             board,
             result: &mut res,
         };
@@ -63,7 +62,6 @@ impl Piece {
                 helper.build_diag_cross(None, InclusionPolicy::EMPTY | InclusionPolicy::DIFFERENT);
             }
             PieceKind::King => {
-                helper.square_flags |= SquareQueryFlags::NO_BLACK_ATTACK;
                 helper.build_cross(Some(1), InclusionPolicy::EMPTY | InclusionPolicy::DIFFERENT);
                 helper
                     .build_diag_cross(Some(1), InclusionPolicy::EMPTY | InclusionPolicy::DIFFERENT);
@@ -78,8 +76,7 @@ struct MoveConstructor<'a> {
     piece_color: PieceColor,
     front: (i8, i8),
     square_flags: SquareQueryFlags,
-    occupied_squares: &'a HashMap<GridPosition, PieceColor>,
-    board: &'a Board,
+    board: &'a BoardState,
     result: &'a mut Vec<GridPosition>,
 }
 impl MoveConstructor<'_> {
@@ -116,9 +113,9 @@ impl MoveConstructor<'_> {
 
         for candidate in squares {
             if self.board.query_square(candidate, self.square_flags) {
-                match self.occupied_squares.get(&candidate) {
-                    Some(col) => {
-                        let same = *col == self.piece_color;
+                match self.board.state.get(&candidate) {
+                    Some(p) => {
+                        let same = p.color == self.piece_color;
                         if same && include.contains(InclusionPolicy::SAME) {
                             self.result.push(candidate);
                         }
@@ -144,9 +141,10 @@ impl MoveConstructor<'_> {
                 if let Some(candidate) = self.start.try_add(delta) {
                     if self.board.query_square(candidate, self.square_flags)
                         && self
-                            .occupied_squares
+                            .board
+                            .state
                             .get(&candidate)
-                            .is_none_or(|c| *c != self.piece_color)
+                            .is_none_or(|p| p.color != self.piece_color)
                     {
                         self.result.push(candidate);
                     }
