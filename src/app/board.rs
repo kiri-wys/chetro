@@ -156,7 +156,9 @@ impl Board {
                 snapshot.move_piece(piece.position, mov);
                 let atks = snapshot.attack_map(opposite);
 
-                if atks.contains(&mov) {
+                if atks.contains(&self.white_king_pos)
+                    || (piece.kind == PieceKind::King && atks.contains(&mov))
+                {
                     continue;
                 }
 
@@ -322,13 +324,14 @@ impl Board {
         if self.test_movement(from, to) {
             let mut next = self.snapshot();
             next.move_piece(from, to);
+            let king = self.white_king_pos;
             let piece = self.piece_at_mut(from).unwrap();
             let opposite = match piece.color {
                 PieceColor::Black => PieceColor::White,
                 PieceColor::White => PieceColor::Black,
             };
             let atks = next.attack_map(opposite);
-            if atks.contains(&to) {
+            if atks.contains(&king) || (piece.kind == PieceKind::King && atks.contains(&to)) {
                 warn!("{from}->{to} would lead to check");
                 return;
             }
