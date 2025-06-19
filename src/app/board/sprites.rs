@@ -16,5 +16,4 @@ pub struct PieceMappings {
     pub knight: GridPosition,
     pub king: GridPosition,
     pub queen: GridPosition,
-    pub move_gizmo: GridPosition,
 }

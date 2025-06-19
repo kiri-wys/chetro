@@ -1,21 +1,19 @@
 pub mod piece;
+pub mod player;
 pub mod sprites;
 
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Display,
-};
+use std::{collections::HashMap, fmt::Display};
 
 use macroquad::{
     color::*,
-    math::{Rect, U16Vec2},
+    math::U16Vec2,
     shapes::draw_rectangle,
     text::draw_text,
-    texture::{DrawTextureParams, draw_texture_ex},
+    texture::{Texture2D, draw_texture},
 };
 use piece::{Piece, PieceColor, PieceKind};
+use player::Players;
 use sprites::SpritesMap;
-use tracing::warn;
 
 use super::Vec2;
 
@@ -23,129 +21,34 @@ pub struct Board {
     num_cells: U16Vec2,
     cell_size: Vec2,
     selected_piece_pos: Option<GridPosition>,
-    black_pieces: Vec<Piece>,
-    white_pieces: Vec<Piece>,
-    black_king_pos: GridPosition,
-    white_king_pos: GridPosition,
-    white_illegal_moves: HashSet<GridPosition>,
-
-    white_sprites: SpritesMap,
-    black_sprites: SpritesMap,
+    players: Players,
+    move_sprite: Texture2D,
 }
 impl Board {
-    pub fn new(white_sprites: SpritesMap, black_sprites: SpritesMap) -> Self {
-        let mut white_pieces = vec![];
-        let mut king = None;
-        for (idx, kind) in [
-            PieceKind::Rook,
-            PieceKind::Bishop,
-            PieceKind::Pawn,
-            PieceKind::Knight,
-            PieceKind::King,
-            PieceKind::Queen,
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let position = GridPosition {
-                x: idx as u16,
-                y: 2,
-            };
-            if kind == PieceKind::King {
-                king = Some(position)
-            }
-            white_pieces.push(Piece {
-                kind,
-                color: PieceColor::White,
-                position,
-            });
-        }
-        let bk = Piece {
-            kind: PieceKind::King,
-            color: PieceColor::Black,
-            position: GridPosition { x: 7, y: 7 },
-        };
-        let black_king_pos = bk.position;
+    pub fn new(
+        white_sprites: SpritesMap,
+        black_sprites: SpritesMap,
+        move_sprite: Texture2D,
+    ) -> Self {
         Self {
             num_cells: U16Vec2 { x: 8, y: 8 },
             cell_size: Vec2 { x: 128.0, y: 128.0 },
             selected_piece_pos: None,
-            black_pieces: vec![
-                Piece {
-                    kind: PieceKind::Rook,
-                    color: PieceColor::Black,
-                    position: GridPosition { x: 3, y: 3 },
-                },
-                bk,
-            ],
-            white_pieces,
-            black_king_pos,
-            white_king_pos: king.unwrap(),
-            white_illegal_moves: HashSet::new(),
-
-            white_sprites,
-            black_sprites,
+            players: Players::new(black_sprites, white_sprites),
+            move_sprite,
         }
     }
 
     fn draw_pieces(&self) {
-        for piece in self.black_pieces.iter() {
-            let GridPosition { x, y } = piece.position;
-            let y = self.num_cells.y - y - 1;
-            let GridPosition { x: ax, y: ay } =
-                piece.kind.atlas_offset(&self.black_sprites.mappings);
-            let modulate = if self.selected_piece_pos.is_some_and(|p| p == piece.position) {
-                RED
-            } else {
-                WHITE
-            };
-            draw_texture_ex(
-                &self.black_sprites.atlas,
-                x as f32 * self.cell_size.x,
-                y as f32 * self.cell_size.y,
-                modulate,
-                DrawTextureParams {
-                    source: Some(Rect {
-                        x: ax as f32 * self.cell_size.x,
-                        y: ay as f32 * self.cell_size.y,
-                        w: self.cell_size.x,
-                        h: self.cell_size.y,
-                    }),
-                    ..Default::default()
-                },
-            );
-        }
-        for piece in self.white_pieces.iter() {
-            let GridPosition { x, y } = piece.position;
-            let y = self.num_cells.y - y - 1;
-            let GridPosition { x: ax, y: ay } =
-                piece.kind.atlas_offset(&self.white_sprites.mappings);
-            let modulate = if self.selected_piece_pos.is_some_and(|p| p == piece.position) {
-                RED
-            } else {
-                WHITE
-            };
-            draw_texture_ex(
-                &self.white_sprites.atlas,
-                x as f32 * self.cell_size.x,
-                y as f32 * self.cell_size.y,
-                modulate,
-                DrawTextureParams {
-                    source: Some(Rect {
-                        x: ax as f32 * self.cell_size.x,
-                        y: ay as f32 * self.cell_size.y,
-                        w: self.cell_size.x,
-                        h: self.cell_size.y,
-                    }),
-                    ..Default::default()
-                },
-            );
-        }
+        self.players
+            .draw(self.num_cells.y, self.cell_size, self.selected_piece_pos);
     }
     fn draw_gizmos(&self) {
-        if let Some(piece) = self.selected_piece_pos.and_then(|p| self.piece_at(p)) {
+        if let Some(piece) = self
+            .selected_piece_pos
+            .and_then(|p| self.players.piece_at(p))
+        {
             let moves = piece.pseudo_moveset(&self.snapshot());
-            let GridPosition { x: ax, y: ay } = self.white_sprites.mappings.move_gizmo;
 
             for mov in moves {
                 let mut snapshot = self.snapshot();
@@ -156,7 +59,7 @@ impl Board {
                 snapshot.move_piece(piece.position, mov);
                 let atks = snapshot.attack_map(opposite);
 
-                if atks.contains(&self.white_king_pos)
+                if atks.contains(&self.players.king_position(piece.color))
                     || (piece.kind == PieceKind::King && atks.contains(&mov))
                 {
                     continue;
@@ -164,20 +67,11 @@ impl Board {
 
                 let GridPosition { x, y } = mov;
                 let y = self.num_cells.y - y - 1;
-                draw_texture_ex(
-                    &self.white_sprites.atlas,
+                draw_texture(
+                    &self.move_sprite,
                     x as f32 * self.cell_size.x,
                     y as f32 * self.cell_size.y,
                     WHITE,
-                    DrawTextureParams {
-                        source: Some(Rect {
-                            x: ax as f32 * self.cell_size.x,
-                            y: ay as f32 * self.cell_size.y,
-                            w: self.cell_size.x,
-                            h: self.cell_size.y,
-                        }),
-                        ..Default::default()
-                    },
                 );
             }
         };
@@ -259,31 +153,10 @@ impl Board {
         Some(GridPosition { x, y })
     }
 
-    pub fn remove_piece_at(&mut self, pos: GridPosition) -> Option<Piece> {
-        if let Some(idx) = self.black_pieces.iter().position(|p| p.position == pos) {
-            return Some(self.black_pieces.swap_remove(idx));
-        };
-        if let Some(idx) = self.white_pieces.iter().position(|p| p.position == pos) {
-            return Some(self.white_pieces.swap_remove(idx));
-        }
-        None
-    }
-    pub fn piece_at(&self, pos: GridPosition) -> Option<&Piece> {
-        self.black_pieces
-            .iter()
-            .chain(self.white_pieces.iter())
-            .find(|p| p.position == pos)
-    }
-    pub fn piece_at_mut(&mut self, pos: GridPosition) -> Option<&mut Piece> {
-        self.black_pieces
-            .iter_mut()
-            .chain(self.white_pieces.iter_mut())
-            .find(|p| p.position == pos)
-    }
-
     pub fn selected_piece(&self) -> Option<&Piece> {
         self.selected_piece_pos.map(|p| {
-            self.piece_at(p)
+            self.players
+                .piece_at(p)
                 .expect("Selected piece position doesn't correspont to an existing piece")
         })
     }
@@ -292,79 +165,28 @@ impl Board {
     pub fn selected_piece_pos(&self) -> Option<GridPosition> {
         self.selected_piece_pos
     }
-    pub fn selected_piece_mut(&mut self) -> Option<&mut Piece> {
-        self.selected_piece_pos.map(|p| {
-            self.piece_at_mut(p)
-                .expect("Selected piece position doesn't correspont to an existing piece")
-        })
-    }
-
-    #[inline]
-    pub fn select_piece(&mut self, piece: &Piece) {
-        self.select_piece_at(piece.position);
-    }
     #[inline]
     pub fn select_piece_at(&mut self, position: GridPosition) {
         self.selected_piece_pos = Some(position);
     }
 
-    fn test_movement(&self, from: GridPosition, to: GridPosition) -> bool {
-        match self.piece_at(from) {
-            Some(piece) => {
-                let moves = piece.pseudo_moveset(&self.snapshot());
-                moves.contains(&to)
-            }
-            None => false,
-        }
-    }
-    pub fn try_move_piece(&mut self, from: GridPosition, to: GridPosition) {
+    pub fn try_move_piece(
+        &mut self,
+        from: GridPosition,
+        to: GridPosition,
+    ) -> Result<(), piece::MoveError> {
         if self.selected_piece_pos.is_some_and(|p| p == from) {
             self.selected_piece_pos.take();
         }
-        if self.test_movement(from, to) {
-            let mut next = self.snapshot();
-            next.move_piece(from, to);
-            let king = self.white_king_pos;
-            let piece = self.piece_at_mut(from).unwrap();
-            let opposite = match piece.color {
-                PieceColor::Black => PieceColor::White,
-                PieceColor::White => PieceColor::Black,
-            };
-            let atks = next.attack_map(opposite);
-            if atks.contains(&king) || (piece.kind == PieceKind::King && atks.contains(&to)) {
-                warn!("{from}->{to} would lead to check");
-                return;
-            }
-            piece.position = to;
-            if piece.kind == PieceKind::King {
-                self.white_king_pos = to;
-            }
-        }
-    }
-
-    /// Tries to move piece at `from` to `to`.
-    /// Returns the captured piece, won't move if there's no piece at `to` so
-    /// `Some(piece)` is guaranteed to have moved the piece while `None` is guaranteed
-    /// to have left the capturing piece at `from`
-    pub fn try_capture_piece(&mut self, from: GridPosition, to: GridPosition) -> Option<Piece> {
-        if self.selected_piece_pos.is_some_and(|p| p == from) {
-            self.selected_piece_pos.take();
-        }
-        if self.test_movement(from, to) {
-            match self.remove_piece_at(to) {
-                Some(s) => {
-                    self.piece_at_mut(from).unwrap().position = to;
-                    Some(s)
-                }
-                None => None,
-            }
-        } else {
-            None
-        }
+        self.players.move_piece(self.snapshot(), from, to)
     }
 
     fn snapshot(&self) -> BoardState {
         BoardState::new(self)
+    }
+
+    pub fn piece_at(&self, p: GridPosition) -> Option<&Piece> {
+        self.players.piece_at(p)
     }
 }
 // TODO: Probably the 'simplest' way to implement an ahead of turn check
@@ -381,12 +203,7 @@ pub struct BoardState {
 }
 impl BoardState {
     pub fn new(board: &Board) -> Self {
-        let state = board
-            .black_pieces
-            .iter()
-            .chain(board.white_pieces.iter())
-            .map(|p| (p.position, p.clone()))
-            .collect();
+        let state = board.players.pieces();
         Self {
             state,
             num_cells: board.num_cells,

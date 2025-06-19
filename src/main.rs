@@ -24,7 +24,11 @@ async fn main() {
         atlas: load_texture("assets/pieces_black.png").await.unwrap(),
         mappings,
     };
-    let mut game = app::Game::new(white_sprites, black_sprites);
+    let mut game = app::Game::new(
+        white_sprites,
+        black_sprites,
+        load_texture("assets/move_gizmo.png").await.unwrap(),
+    );
 
     let render_target = render_target(TARGET_RESOLUTION.x as u32, TARGET_RESOLUTION.y as u32);
     render_target.texture.set_filter(FilterMode::Linear);

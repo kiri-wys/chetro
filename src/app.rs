@@ -8,8 +8,9 @@ use macroquad::{
     input::{MouseButton, is_mouse_button_pressed},
     math::Vec2,
     shapes::draw_circle,
+    texture::Texture2D,
 };
-use tracing::info;
+use tracing::{info, warn};
 
 pub struct Game {
     board: Board,
@@ -19,9 +20,13 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(white_sprites: SpritesMap, black_sprites: SpritesMap) -> Self {
+    pub fn new(
+        white_sprites: SpritesMap,
+        black_sprites: SpritesMap,
+        move_sprite: Texture2D,
+    ) -> Self {
         Self {
-            board: Board::new(white_sprites, black_sprites),
+            board: Board::new(white_sprites, black_sprites, move_sprite),
             player_color: PieceColor::White,
             ctx: Default::default(),
         }
@@ -81,11 +86,12 @@ impl Game {
                 // to RefCell's assertions.
                 match action {
                     ClickAction::SelectNew(piece) => self.board.select_piece_at(piece),
-                    ClickAction::TryMove { from, to } => self.board.try_move_piece(from, to),
-                    ClickAction::ChangeSelection { from: _, to } => self.board.select_piece_at(to),
-                    ClickAction::TryCapture { from, to } => {
-                        self.board.try_capture_piece(from, to);
+                    ClickAction::TryMove { from, to } | ClickAction::TryCapture { from, to } => {
+                        if let Err(err) = self.board.try_move_piece(from, to) {
+                            warn!("Invalid move: {:?}", err);
+                        };
                     }
+                    ClickAction::ChangeSelection { from: _, to } => self.board.select_piece_at(to),
                     ClickAction::Nothing => (),
                 }
             }

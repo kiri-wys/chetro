@@ -5,7 +5,7 @@ pub enum PieceColor {
     Black,
     White,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PieceKind {
     Pawn,
     Rook,
@@ -69,6 +69,41 @@ impl Piece {
         };
         res
     }
+
+    pub fn move_to(
+        &mut self,
+        board: &mut BoardState,
+        to: GridPosition,
+        king_position: GridPosition,
+    ) -> Result<(), MoveError> {
+        let piece_kind = self.kind;
+        let moves = self.pseudo_moveset(board);
+
+        if !moves.contains(&to) {
+            return Err(MoveError::InvalidTarget);
+        }
+        board.move_piece(self.position, to);
+        let opposite = match self.color {
+            PieceColor::Black => PieceColor::White,
+            PieceColor::White => PieceColor::Black,
+        };
+        let opp_attack_map = board.attack_map(opposite);
+        if opp_attack_map.contains(&king_position)
+            || (piece_kind == PieceKind::King && opp_attack_map.contains(&to))
+        {
+            return Err(MoveError::WouldCheck);
+        }
+
+        self.position = to;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum MoveError {
+    InvalidOrigin,
+    InvalidTarget,
+    WouldCheck,
 }
 
 struct MoveConstructor<'a> {
@@ -172,7 +207,6 @@ impl PieceKind {
             knight,
             king,
             queen,
-            move_gizmo: _,
         } = *map;
         match self {
             PieceKind::Pawn => pawn,
